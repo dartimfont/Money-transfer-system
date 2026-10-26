@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"sync"
 )
 
 type User struct {
@@ -22,12 +23,12 @@ type PaymentSystem struct {
 	TransactionQueue []Transaction
 }
 
-func (p *PaymentSystem) AddUser(user *User) {
-	p.Users[user.ID] = user
+func (ps *PaymentSystem) AddUser(user *User) {
+	ps.Users[user.ID] = user
 }
 
-func (p *PaymentSystem) AddTransaction(transaction Transaction) {
-	p.TransactionQueue = append(p.TransactionQueue, transaction)
+func (ps *PaymentSystem) AddTransaction(transaction Transaction) {
+	ps.TransactionQueue = append(ps.TransactionQueue, transaction)
 }
 
 func (u *User) Deposit(value float64) {
@@ -45,13 +46,13 @@ func (u *User) Withdraw(value float64) error {
 	return nil
 }
 
-func (p *PaymentSystem) ProcessingTransactions(transaction Transaction) error {
-	userTo, ok := p.Users[transaction.ToId]
+func (ps *PaymentSystem) ProcessingTransactions(transaction Transaction) error {
+	userTo, ok := ps.Users[transaction.ToId]
 	if ok == false {
 		return errors.New("Пользоватьель ToId не найден")
 	}
 
-	userFrom, ok := p.Users[transaction.FromId]
+	userFrom, ok := ps.Users[transaction.FromId]
 	if ok == false {
 		return errors.New("Пользоватьель FromId не найден")
 	}
@@ -69,10 +70,21 @@ func (p *PaymentSystem) ProcessingTransactions(transaction Transaction) error {
 	return nil
 }
 
+func (ps *PaymentSystem) worker(ch <-chan Transaction, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for tr := range ch {
+		err := ps.ProcessingTransactions(tr)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}
+}
+
 func main() {
 	ps := &PaymentSystem{Users: make(map[string]*User), TransactionQueue: make([]Transaction, 0)}
 
-	user1 := &User{ID: "id1", Name: "user1", Balance: 100.0}
+	user1 := &User{ID: "id1", Name: "user1", Balance: 1000.0}
 	user2 := &User{ID: "id2", Name: "user2", Balance: 500.0}
 
 	ps.AddUser(user1)
@@ -84,12 +96,20 @@ func main() {
 	ps.AddTransaction(tr1)
 	ps.AddTransaction(tr2)
 
-	for i := 0; i < len(ps.TransactionQueue); i++ {
-		err := ps.ProcessingTransactions(ps.TransactionQueue[i])
-		if err != nil {
-			fmt.Println(err.Error())
-		}
+	ch := make(chan Transaction, 3)
+	var wg sync.WaitGroup
+
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		go ps.worker(ch, &wg)
 	}
+
+	for _, tr := range ps.TransactionQueue {
+		ch <- tr
+	}
+
+	close(ch)
+	wg.Wait()
 
 	fmt.Println("Баланс", user1.Name, user1.Balance)
 	fmt.Println("Баланс", user2.Name, user2.Balance)
