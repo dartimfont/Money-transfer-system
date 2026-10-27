@@ -14,16 +14,23 @@ type User struct {
 func (u *User) Deposit(value float64) {
 	fmt.Println("Пополнение пользователю", u.Name, "на", value)
 	u.Balance += value
+	u.printBalance()
 }
 
 func (u *User) Withdraw(value float64) error {
+	fmt.Println("Снятие со счета пользователя", u.Name, value)
+
 	if u.Balance-value < 0 {
 		return errors.New("Недостаточно средств на балансе")
 	}
 
-	fmt.Println("Снятие со счета пользователя", u.Name, value)
 	u.Balance -= value
+	u.printBalance()
 	return nil
+}
+
+func (u *User) printBalance() {
+	fmt.Println("Баланс", u.Name, u.Balance)
 }
 
 func main() {
@@ -46,8 +53,4 @@ func main() {
 	if err := user3.Withdraw(560); err != nil {
 		fmt.Println(err.Error())
 	}
-
-	fmt.Println("Баланс", user1.Name, user1.Balance)
-	fmt.Println("Баланс", user2.Name, user2.Balance)
-	fmt.Println("Баланс", user3.Name, user3.Balance)
 }
