@@ -34,27 +34,35 @@ func (ps *PaymentSystem) AddTransaction(transaction Transaction) {
 func (u *User) Deposit(value float64) {
 	fmt.Println("Пополнение пользователю", u.Name, "на", value)
 	u.Balance += value
+	u.printBalance()
 }
 
 func (u *User) Withdraw(value float64) error {
+	fmt.Println("Снятие со счета пользователя", u.Name, value)
+
 	if u.Balance-value < 0 {
-		return errors.New("Недостаточно средств на балансе")
+		return errors.New("insufficient funds")
 	}
 
-	fmt.Println("Снятие со счета пользователя", u.Name, value)
 	u.Balance -= value
+	u.printBalance()
 	return nil
+}
+
+func (u *User) printBalance() {
+	fmt.Println("Баланс", u.Name, u.Balance)
 }
 
 func (ps *PaymentSystem) ProcessingTransactions(transaction Transaction) error {
 	userTo, ok := ps.Users[transaction.ToId]
+
 	if ok == false {
-		return errors.New("Пользоватьель ToId не найден")
+		return errors.New("recipient user not found")
 	}
 
 	userFrom, ok := ps.Users[transaction.FromId]
 	if ok == false {
-		return errors.New("Пользоватьель FromId не найден")
+		return errors.New("sender user not found")
 	}
 
 	fmt.Println("Перевожу с пользователя ID:", transaction.FromId, "на  ID:",
@@ -96,7 +104,7 @@ func main() {
 	ps.AddTransaction(tr1)
 	ps.AddTransaction(tr2)
 
-	ch := make(chan Transaction, 3)
+	ch := make(chan Transaction, len(ps.TransactionQueue))
 	var wg sync.WaitGroup
 
 	for i := 0; i < 3; i++ {
@@ -110,7 +118,4 @@ func main() {
 
 	close(ch)
 	wg.Wait()
-
-	fmt.Println("Баланс", user1.Name, user1.Balance)
-	fmt.Println("Баланс", user2.Name, user2.Balance)
 }
