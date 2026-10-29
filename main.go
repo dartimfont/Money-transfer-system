@@ -33,27 +33,34 @@ func (p *PaymentSystem) AddTransaction(transaction Transaction) {
 func (u *User) Deposit(value float64) {
 	fmt.Println("Пополнение пользователю", u.Name, "на", value)
 	u.Balance += value
+	u.printBalance()
 }
 
 func (u *User) Withdraw(value float64) error {
+	fmt.Println("Снятие со счета пользователя", u.Name, value)
+
 	if u.Balance-value < 0 {
-		return errors.New("Недостаточно средств на балансе")
+		return errors.New("insufficient funds")
 	}
 
-	fmt.Println("Снятие со счета пользователя", u.Name, value)
 	u.Balance -= value
+	u.printBalance()
 	return nil
+}
+
+func (u *User) printBalance() {
+	fmt.Println("Баланс", u.Name, u.Balance)
 }
 
 func (p *PaymentSystem) ProcessingTransactions(transaction Transaction) error {
 	userTo, ok := p.Users[transaction.ToId]
 	if ok == false {
-		return errors.New("Пользоватьель ToId не найден")
+		return errors.New("recipient user not found")
 	}
 
 	userFrom, ok := p.Users[transaction.FromId]
 	if ok == false {
-		return errors.New("Пользоватьель FromId не найден")
+		return errors.New("sender user not found")
 	}
 
 	fmt.Println("Перевожу с пользователя ID:", transaction.FromId, "на  ID:",
@@ -72,7 +79,7 @@ func (p *PaymentSystem) ProcessingTransactions(transaction Transaction) error {
 func main() {
 	ps := &PaymentSystem{Users: make(map[string]*User), TransactionQueue: make([]Transaction, 0)}
 
-	user1 := &User{ID: "id1", Name: "user1", Balance: 100.0}
+	user1 := &User{ID: "id1", Name: "user1", Balance: 1000.0}
 	user2 := &User{ID: "id2", Name: "user2", Balance: 500.0}
 
 	ps.AddUser(user1)
@@ -90,7 +97,4 @@ func main() {
 			fmt.Println(err.Error())
 		}
 	}
-
-	fmt.Println("Баланс", user1.Name, user1.Balance)
-	fmt.Println("Баланс", user2.Name, user2.Balance)
 }
